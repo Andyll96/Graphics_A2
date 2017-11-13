@@ -27,6 +27,9 @@ static GLfloat light_ambient[] = { 0.2F, 0.2F, 0.2F, 1.0F };
 //Mouse Triggers
 int leftTrigger = -1;
 int rightTrigger = -1;
+GLfloat shoulderPitch = 0.0;
+GLfloat shoulderYaw = 0.0;
+GLfloat elbowPitch = 0.0;
 
 //A quad mesh object, given by the provided QuadMesh.c file
 static QuadMesh groundMesh;
@@ -39,6 +42,7 @@ void keyboard(unsigned char key, int mx, int my);
 void functionKeys(int key, int x, int y);
 void mouseButton(int button, int state, int x, int y);
 void mouseMove(int x, int y);
+void drawRobotArm(void);
 
 int main(int argc, char** argv)
 {
@@ -55,6 +59,7 @@ int main(int argc, char** argv)
 	//Register Callbacks
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
+	glutIdleFunc(display);
 	glutKeyboardFunc(keyboard);
 	glutSpecialFunc(functionKeys);
 	glutMouseFunc(mouseButton);
@@ -85,7 +90,7 @@ void initOpenGL(int w, int h)
 	//Enable Lights
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	glEnable(GL_LIGHT1);
+	//glEnable(GL_LIGHT1);
 
 	// Other OpenGL setup
 	glEnable(GL_DEPTH_TEST);   // Remove hidded surfaces
@@ -96,7 +101,7 @@ void initOpenGL(int w, int h)
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);   // Nicer perspective
 
 	//Ground setup
-	Vector3D origin = NewVector3D(-10.0f, 0.0f, 10.0f);
+	Vector3D origin = NewVector3D(-20.0f, 0.0f, 10.0f); //doesn't refer to centroid, refers to one of the corners of the mesh
 	Vector3D dir1v = NewVector3D(1.0f, 0.0f, 0.0f);
 	Vector3D dir2v = NewVector3D(0.0f, 0.0f, -1.0f);
 	Vector3D ambient = NewVector3D(0.0f, 0.05f, 0.0f);
@@ -104,7 +109,7 @@ void initOpenGL(int w, int h)
 	Vector3D specular = NewVector3D(0.4f, 0.04f, 0.04f);
 
 	groundMesh = NewQuadMesh(meshSize);
-	InitMeshQM(&groundMesh, meshSize, origin, 20.0, 20.0, dir1v, dir2v);
+	InitMeshQM(&groundMesh, meshSize, origin, 40.0, 40.0, dir1v, dir2v);
 	SetMaterialQM(&groundMesh, ambient, diffuse, specular, 0.2);
 }
 
@@ -114,8 +119,22 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
-	gluLookAt(0.0, 6.0, 22.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	gluLookAt(0.0, 6.0, 30.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
+	//Drawing Global axes
+	glDisable(GL_TEXTURE_2D);
+	glLineWidth(2);
+	glBegin(GL_LINES);
+	glColor3f(1, 0, 0);
+	glVertex3f(0, 5, 0);
+	glVertex3f(5, 5, 0);
+	glVertex3f(0, 5, 0);
+	glVertex3f(0, 10, 0);
+	glVertex3f(0, 5, 0);
+	glVertex3f(0, 5, 5);
+	glEnd();
+
+	drawRobotArm();
 
 	DrawMeshQM(&groundMesh, meshSize);
 	glutSwapBuffers(); //Double buffering, swap buffers
@@ -143,8 +162,10 @@ void keyboard(unsigned char key, int mx, int my)
 		exit(0);
 		break;
 	case 'w':
+		elbowPitch += 2;
 		break;
 	case 's':
+		elbowPitch -= 2;
 		break;
 	}
 
@@ -172,15 +193,18 @@ void functionKeys(int key, int x, int y)
 			printf("\t-Move Mouse Down + Hold Right Mouse Button: moves the camera downward, the limit being no more than ground level\n");
 			printf("\t-Move Mouse Scroll Wheel: use scroll wheel on mouse to zoom in and out, does not move camera closer to scene\n");
 		break;
-	case GLUT_KEY_LEFT:
-		break;
-	case GLUT_KEY_RIGHT:
-		break;
 	case GLUT_KEY_DOWN:
+		shoulderPitch += 2.0f;
 		break;
 	case GLUT_KEY_UP:
+		shoulderPitch -= 2.0f;
 		break;
-
+	case GLUT_KEY_LEFT:
+		shoulderYaw += 2.0f;
+		break;
+	case GLUT_KEY_RIGHT:
+		shoulderYaw -= 2.0f;
+		break;
 	}
 }
 
@@ -212,4 +236,43 @@ void mouseMove(int x, int y)
 		printf("right trigger activated and moving\n");
 		printf("X: %d\tY: %d\n", x, y);
 	}
+}
+
+void drawRobotArm(void)
+{
+	glPushMatrix();
+	glRotatef(shoulderYaw, 0.0, 1.0, 0.0);
+		glPushMatrix();		
+			//Shoulder Transformations
+			glRotatef(shoulderPitch, 0.0, 0.0, 1.0);
+			//Base Shoulder Sphere
+			glPushMatrix();
+				glutSolidSphere(2.0, 20.0, 50);
+			glPopMatrix();
+			glPushMatrix();
+				glTranslatef(0.0, 7.0, 0.0);
+				glScalef(1.0, 10.0, 1.0);
+				glutSolidCube(1.0);
+			glPopMatrix();
+
+			//Elbow Transformations
+				glRotatef(elbowPitch, 0.0, 0.0, 1.0);
+				//Elbow Sphere
+				glPushMatrix();
+					glTranslatef(0.0, 12.0, 0.0);
+					glutSolidSphere(1.0, 20, 50);
+				glPopMatrix();
+				glPushMatrix();
+					glTranslatef(5.0, 12.0, 0.0);
+					glScalef(10.0, 1.0, 1.0);
+					glutSolidCube(1.0);
+				glPopMatrix();
+				//Head
+				glPushMatrix();
+				glTranslatef(11.0, 12.0, 0.0);
+					glScalef(4.0, 0.5, 3.0);
+					glutSolidCube(1.0);
+				glPopMatrix();
+		glPopMatrix();
+	glPopMatrix();
 }
