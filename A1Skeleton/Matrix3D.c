@@ -13,7 +13,6 @@
 // 1. Create an identity matrix, perform some transformations on it, then use the
 //    resulting matrix to transform a point/vertex. In other words  M = R * T * S; v = M * v
 // Matrix3D m = NewIdentity();
-// MatrixLeftMultiplyV(&m, NewScale(0.5, 1, 1));
 // MatrixLeftMultiplyV(&m, NewTranslate(0, 5.2, -3.9));
 // MatrixLeftMultiplyV(&m, NewRotateZ(33));
 // Vector3D v = NewVector3D(5, 7, -2.5);

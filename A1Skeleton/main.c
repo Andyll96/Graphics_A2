@@ -9,11 +9,15 @@
 #include "Vector3D.h"
 #include "CubeMesh.h"
 #include "QuadMesh.h"
+#include "Matrix3D.h"
 
 //Constants
 const int vWidth = 1000;
 const int vHeight = 1000;
 const int meshSize = 20;
+
+float px = 0, py = 0, pz = 0;
+
 
 // Light positions
 static GLfloat light_position0[] = { -6.0F, 12.0F, 0.0F, 1.0F };
@@ -43,6 +47,8 @@ void functionKeys(int key, int x, int y);
 void mouseButton(int button, int state, int x, int y);
 void mouseMove(int x, int y);
 void drawRobotArm(void);
+void drawAxes(void);
+void fkPrinter(void);
 
 int main(int argc, char** argv)
 {
@@ -89,8 +95,8 @@ void initOpenGL(int w, int h)
 
 	//Enable Lights
 	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-	//glEnable(GL_LIGHT1);
+	//glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHT1);
 
 	// Other OpenGL setup
 	glEnable(GL_DEPTH_TEST);   // Remove hidded surfaces
@@ -101,7 +107,7 @@ void initOpenGL(int w, int h)
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);   // Nicer perspective
 
 	//Ground setup
-	Vector3D origin = NewVector3D(-20.0f, 0.0f, 10.0f); //doesn't refer to centroid, refers to one of the corners of the mesh
+	Vector3D origin = NewVector3D(-20.0f, 0.0f, 20.0f); //doesn't refer to centroid, refers to one of the corners of the mesh
 	Vector3D dir1v = NewVector3D(1.0f, 0.0f, 0.0f);
 	Vector3D dir2v = NewVector3D(0.0f, 0.0f, -1.0f);
 	Vector3D ambient = NewVector3D(0.0f, 0.05f, 0.0f);
@@ -122,20 +128,13 @@ void display(void)
 	gluLookAt(0.0, 6.0, 30.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
 	//Drawing Global axes
-	glDisable(GL_TEXTURE_2D);
-	glLineWidth(2);
-	glBegin(GL_LINES);
-	glColor3f(1, 0, 0);
-	glVertex3f(0, 5, 0);
-	glVertex3f(5, 5, 0);
-	glVertex3f(0, 5, 0);
-	glVertex3f(0, 10, 0);
-	glVertex3f(0, 5, 0);
-	glVertex3f(0, 5, 5);
-	glEnd();
-
+	drawAxes();
 	drawRobotArm();
-
+	fkPrinter();
+	glPushMatrix();
+		glTranslatef(px, py, pz);
+		glutWireCube(1.0);
+	glPopMatrix();
 	DrawMeshQM(&groundMesh, meshSize);
 	glutSwapBuffers(); //Double buffering, swap buffers
 }
@@ -162,10 +161,26 @@ void keyboard(unsigned char key, int mx, int my)
 		exit(0);
 		break;
 	case 'w':
-		elbowPitch += 2;
+		if (elbowPitch >= 60)
+		{
+			elbowPitch = 60;
+		}
+		else
+		{
+			elbowPitch += 2;
+		}
+		printf("elbowPitch: %f\n", elbowPitch);
 		break;
 	case 's':
-		elbowPitch -= 2;
+		if (elbowPitch <= -60)
+		{
+			elbowPitch = -60;
+		}
+		else
+		{
+			elbowPitch -= 2;
+		}
+		printf("elbowPitch: %f\n", elbowPitch);
 		break;
 	}
 
@@ -194,16 +209,46 @@ void functionKeys(int key, int x, int y)
 			printf("\t-Move Mouse Scroll Wheel: use scroll wheel on mouse to zoom in and out, does not move camera closer to scene\n");
 		break;
 	case GLUT_KEY_DOWN:
-		shoulderPitch += 2.0f;
+		if (shoulderPitch >= 10)
+		{
+			shoulderPitch = 10;
+		}
+		else
+		{
+			shoulderPitch += 2.0f;
+		}
+		printf("shoulderPitch: %f\n", shoulderPitch);
 		break;
 	case GLUT_KEY_UP:
-		shoulderPitch -= 2.0f;
+		if (shoulderPitch <= -90)
+		{
+			shoulderPitch = -90;
+		}
+		else
+		{
+			shoulderPitch -= 2.0f;
+		}
+		printf("shoulderPitch: %f\n", shoulderPitch);
 		break;
 	case GLUT_KEY_LEFT:
-		shoulderYaw += 2.0f;
+		if (shoulderYaw >= 360) {
+			shoulderYaw = 0;
+		}
+		else
+		{
+			shoulderYaw += 2.0f;
+		}
+		printf("shoulderYaw: %f\n", shoulderYaw);
 		break;
 	case GLUT_KEY_RIGHT:
-		shoulderYaw -= 2.0f;
+		if (shoulderYaw <= -360) {
+			shoulderYaw = 0;
+		}
+		else
+		{
+			shoulderYaw -= 2.0f;
+		}
+		printf("shoulderYaw: %f\n", shoulderYaw);
 		break;
 	}
 }
@@ -248,6 +293,7 @@ void drawRobotArm(void)
 			//Base Shoulder Sphere
 			glPushMatrix();
 				glutSolidSphere(2.0, 20.0, 50);
+				drawAxes();
 			glPopMatrix();
 			glPushMatrix();
 				glTranslatef(0.0, 7.0, 0.0);
@@ -256,23 +302,58 @@ void drawRobotArm(void)
 			glPopMatrix();
 
 			//Elbow Transformations
+				glTranslatef(0.0, 12.0, 0.0);
 				glRotatef(elbowPitch, 0.0, 0.0, 1.0);
 				//Elbow Sphere
 				glPushMatrix();
-					glTranslatef(0.0, 12.0, 0.0);
 					glutSolidSphere(1.0, 20, 50);
+					drawAxes();
 				glPopMatrix();
 				glPushMatrix();
-					glTranslatef(5.0, 12.0, 0.0);
+					glTranslatef(5.0, 0.0, 0.0);
 					glScalef(10.0, 1.0, 1.0);
 					glutSolidCube(1.0);
 				glPopMatrix();
 				//Head
 				glPushMatrix();
-				glTranslatef(11.0, 12.0, 0.0);
+					glTranslatef(11.0, 0.0, 0.0);
 					glScalef(4.0, 0.5, 3.0);
 					glutSolidCube(1.0);
 				glPopMatrix();
 		glPopMatrix();
 	glPopMatrix();
 }
+
+void drawAxes(void)
+{
+	glDisable(GL_TEXTURE_2D);
+	glLineWidth(2);
+	glBegin(GL_LINES);
+	glColor3f(0, 0, 1);
+	glVertex3f(0, 0, 0);
+	glVertex3f(5, 0, 0);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 5, 0);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 0, 5);
+	glEnd();
+}
+
+void fkPrinter(void)
+{
+	Matrix3D m = NewIdentity();
+	MatrixLeftMultiplyV(&m, NewTranslate(0, -12, 0));
+	MatrixLeftMultiplyV(&m, NewRotateZ(elbowPitch));
+	MatrixLeftMultiplyV(&m, NewTranslate(0, 12, 0));
+	MatrixLeftMultiplyV(&m, NewRotateZ(shoulderPitch));
+	MatrixLeftMultiplyV(&m, NewRotateY(shoulderYaw));
+
+	Vector3D v = NewVector3D(13, 12, 0);
+	VectorLeftMultiply(&v, &m);
+	px = v.x;
+	py = v.y;
+	pz = v.z;	
+	printf("X: %f, Y: %f, Z: %f\n", px, py, pz);
+	if (py <= 0.5) { printf("COLLISION"); }
+}
+
