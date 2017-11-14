@@ -17,6 +17,7 @@ const int vHeight = 1000;
 const int meshSize = 20;
 
 float px = 0, py = 0, pz = 0;
+float cx = 0, cy = 0, cz = 0;
 
 
 // Light positions
@@ -35,6 +36,9 @@ GLfloat shoulderPitch = 0.0;
 GLfloat shoulderYaw = 0.0;
 GLfloat elbowPitch = 0.0;
 
+float cameraPitch = 0.0;
+float cameraYaw = 0.0;
+
 //A quad mesh object, given by the provided QuadMesh.c file
 static QuadMesh groundMesh;
 
@@ -49,6 +53,7 @@ void mouseMove(int x, int y);
 void drawRobotArm(void);
 void drawAxes(void);
 void fkPrinter(void);
+void cameraCoordinates(void);
 
 int main(int argc, char** argv)
 {
@@ -65,11 +70,11 @@ int main(int argc, char** argv)
 	//Register Callbacks
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
-	glutIdleFunc(display);
 	glutKeyboardFunc(keyboard);
 	glutSpecialFunc(functionKeys);
 	glutMouseFunc(mouseButton);
 	glutMotionFunc(mouseMove);
+	glutIdleFunc(display);
 
 	//Enter GLUT event processing cycle
 	glutMainLoop();
@@ -125,7 +130,8 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
-	gluLookAt(0.0, 6.0, 30.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	cameraCoordinates();
+	gluLookAt(cx, cy, cz, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
 	//Drawing Global axes
 	drawAxes();
@@ -255,15 +261,13 @@ void functionKeys(int key, int x, int y)
 
 void mouseButton(int button, int state, int x, int y)
 {
-	if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN)) {
+	if ((button == GLUT_LEFT_BUTTON) ) {
 		leftTrigger = 1;
-
 	}
 	else {
 		leftTrigger = -1;
-
 	}
-	if ((button == GLUT_RIGHT_BUTTON) && (state == GLUT_DOWN)) {
+	if ((button == GLUT_RIGHT_BUTTON) ) {
 		rightTrigger = 1;
 	}
 	else {
@@ -274,10 +278,56 @@ void mouseButton(int button, int state, int x, int y)
 void mouseMove(int x, int y)
 {
 	if (leftTrigger >= 0) {
+		if (x > (glutGet(GLUT_SCREEN_WIDTH) / 2)) {
+			if (cameraYaw >= 360) {
+				cameraYaw = 0;
+			}
+			else
+			{
+				cameraYaw += 2;
+				//printf("cameraYaw: %f\n", cameraYaw);
+
+			}
+		}
+		else if(x < (glutGet(GLUT_SCREEN_WIDTH)/2))
+		{
+			if (cameraYaw <= -360)
+			{
+				cameraYaw = 0;
+			}
+			else
+			{
+				cameraYaw -= 2;
+				//printf("cameraYaw: %f\n", cameraYaw);
+			}
+		}
 		printf("left trigger activated and moving\n");
 		printf("X: %d\tY: %d\n", x, y);
 	}
 	else if (rightTrigger >= 0) {
+
+		if (y > (glutGet(GLUT_SCREEN_HEIGHT) / 2)) {
+			if (cameraPitch >= 0) {
+				cameraPitch = 0;
+			}
+			else
+			{
+				cameraPitch += 2;
+				//printf("cameraYaw: %f\n", cameraYaw);
+			}
+		}
+		else if (y < (glutGet(GLUT_SCREEN_HEIGHT) / 2))
+		{
+			if (cameraPitch <= -60)
+			{
+				cameraPitch = -60;
+			}
+			else
+			{
+				cameraPitch -= 2;
+				//printf("cameraYaw: %f\n", cameraYaw);
+			}
+		}
 		printf("right trigger activated and moving\n");
 		printf("X: %d\tY: %d\n", x, y);
 	}
@@ -342,18 +392,33 @@ void drawAxes(void)
 void fkPrinter(void)
 {
 	Matrix3D m = NewIdentity();
+	Vector3D v = NewVector3D(13, 12, 0);
 	MatrixLeftMultiplyV(&m, NewTranslate(0, -12, 0));
 	MatrixLeftMultiplyV(&m, NewRotateZ(elbowPitch));
 	MatrixLeftMultiplyV(&m, NewTranslate(0, 12, 0));
 	MatrixLeftMultiplyV(&m, NewRotateZ(shoulderPitch));
 	MatrixLeftMultiplyV(&m, NewRotateY(shoulderYaw));
 
-	Vector3D v = NewVector3D(13, 12, 0);
 	VectorLeftMultiply(&v, &m);
 	px = v.x;
 	py = v.y;
 	pz = v.z;	
-	printf("X: %f, Y: %f, Z: %f\n", px, py, pz);
+	//printf("X: %f, Y: %f, Z: %f\n", px, py, pz);
 	if (py <= 0.5) { printf("COLLISION"); }
+}
+
+void cameraCoordinates(void)
+{
+	Matrix3D m = NewIdentity();
+	Vector3D v = NewVector3D(0.0, 1.0, 25.0);
+	MatrixLeftMultiplyV(&m, NewRotateY(cameraYaw));
+	MatrixLeftMultiplyV(&m, NewRotateX(cameraPitch));
+	VectorLeftMultiply(&v, &m);
+	cx = v.x;
+	cy = v.y;
+	cz = v.z;
+	printf("cameraYaw: %f\n", cameraYaw);
+	printf("cameraPitch: %f\n", cameraPitch);
+	printf("X: %f, Y: %f, Z: %f\n", v.x, v.y, v.z);
 }
 
