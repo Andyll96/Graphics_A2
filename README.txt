@@ -1,4 +1,7 @@
 CPS511 Assignment 1 Skeleton Code
+Robot Kinematics with Interactive Terrain Generation
+
+Implement an OpenGL-based 3D Interactive robot "digger" that interacts with its environment through terrain generation.
 
 main.c: Contains the main() function, setups OpenGL and draws, does keyboard/mouse handling etc. This is where you should add your submarine/dirigible drawing & animation code.
 
